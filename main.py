@@ -11,13 +11,14 @@ Test:
     pytest
 """
 import json
+import math
 import re
 import sqlite3
 from contextlib import closing
 from decimal import Decimal
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -65,7 +66,7 @@ def _row_to_recipe(row: sqlite3.Row) -> dict:
 
 
 def _scale_ingredient(ingredient: str, factor: float) -> str:
-    match = re.match(r"^(\s*)(\d+(?:\.\d+)?)(?=\s|$)", ingredient)
+    match = re.match(r"^(\s*)(\d+(?:\.\d+)?)(?=\s|[A-Za-z]|$)", ingredient)
     if match is None:
         return ingredient
 
@@ -113,7 +114,10 @@ def get_recipe(recipe_id: int):
 
 
 @app.get("/recipes/{recipe_id}/scaled")
-def get_scaled_recipe(recipe_id: int, factor: float = Query(..., gt=0)):
+def get_scaled_recipe(recipe_id: int, factor: float):
+    if not math.isfinite(factor) or factor <= 0:
+        raise HTTPException(status_code=422, detail="factor must be a finite positive number")
+
     with closing(get_db()) as conn:
         row = conn.execute("SELECT * FROM recipes WHERE id = ?", (recipe_id,)).fetchone()
     if row is None:

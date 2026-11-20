@@ -76,7 +76,15 @@ def test_scaled_recipe_scales_quantities_and_preserves_recipe():
         "/recipes",
         json={
             "title": "Bread",
-            "ingredients": ["200 g flour", "1.5 tsp yeast", "salt to taste"],
+            "ingredients": [
+                "200 g flour",
+                "1.5 tsp yeast",
+                "salt to taste",
+                "200g flour",
+                "2eggs",
+                "Vitamin B12",
+                "1/2 cup sugar",
+            ],
             "tags": ["baking"],
         },
     ).json()
@@ -87,9 +95,29 @@ def test_scaled_recipe_scales_quantities_and_preserves_recipe():
     scaled = response.json()
     assert scaled == {
         **original,
-        "ingredients": ["400 g flour", "3 tsp yeast", "salt to taste"],
+        "ingredients": [
+            "400 g flour",
+            "3 tsp yeast",
+            "salt to taste",
+            "400g flour",
+            "4eggs",
+            "Vitamin B12",
+            "1/2 cup sugar",
+        ],
     }
     assert client.get(f"/recipes/{original['id']}").json() == original
+
+
+def test_scaled_recipe_supports_decimal_factors():
+    recipe_id = client.post(
+        "/recipes",
+        json={"title": "Oats", "ingredients": ["2 cups oats", "1.5g spice"]},
+    ).json()["id"]
+
+    response = client.get(f"/recipes/{recipe_id}/scaled?factor=0.25")
+
+    assert response.status_code == 200
+    assert response.json()["ingredients"] == ["0.5 cups oats", "0.375g spice"]
 
 
 def test_scaled_recipe_returns_404_for_unknown_recipe():
@@ -98,11 +126,12 @@ def test_scaled_recipe_returns_404_for_unknown_recipe():
     assert response.status_code == 404
 
 
-def test_scaled_recipe_requires_positive_factor():
+def test_scaled_recipe_rejects_invalid_factors():
     recipe_id = client.post("/recipes", json={"title": "Soup"}).json()["id"]
 
-    assert client.get(f"/recipes/{recipe_id}/scaled").status_code == 422
-    assert client.get(f"/recipes/{recipe_id}/scaled?factor=0").status_code == 422
+    for factor in ("", "0", "-1", "inf", "Infinity", "1e309", "nan", "not-a-number"):
+        response = client.get(f"/recipes/{recipe_id}/scaled?factor={factor}")
+        assert response.status_code == 422
 
 
 def test_shopping_list_merges_ingredients_in_first_seen_order():
