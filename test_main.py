@@ -126,6 +126,42 @@ def test_scaled_recipe_supports_decimal_factors(client):
     assert response.json()["ingredients"] == ["0.5 cups oats", "0.375g spice"]
 
 
+def test_scaled_recipe_preserves_precision_for_large_and_long_decimal_quantities(client):
+    ingredients = [
+        "1234567890123456789012345678901234567890 g flour",
+        "0.123456789012345678901234567890123456789 kg sugar",
+    ]
+    recipe_id = client.post(
+        "/recipes",
+        json={"title": "Precise Recipe", "ingredients": ingredients},
+    ).json()["id"]
+
+    response = client.get(f"/recipes/{recipe_id}/scaled?factor=2")
+
+    assert response.status_code == 200
+    assert response.json()["ingredients"] == [
+        "2469135780246913578024691357802469135780 g flour",
+        "0.246913578024691357802469135780246913578 kg sugar",
+    ]
+
+
+def test_scaled_recipe_factor_one_preserves_exact_quantity_strings(client):
+    ingredients = [
+        "1234567890123456789012345678901234567890 g flour",
+        "0.12345678901234567890123456789012345678900 kg sugar",
+        "1.2300 tsp vanilla",
+    ]
+    recipe_id = client.post(
+        "/recipes",
+        json={"title": "Unchanged Recipe", "ingredients": ingredients},
+    ).json()["id"]
+
+    response = client.get(f"/recipes/{recipe_id}/scaled?factor=1")
+
+    assert response.status_code == 200
+    assert response.json()["ingredients"] == ingredients
+
+
 def test_scaled_recipe_returns_404_for_unknown_recipe(client):
     response = client.get("/recipes/99999/scaled?factor=2")
 

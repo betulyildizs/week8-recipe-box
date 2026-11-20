@@ -15,7 +15,7 @@ import math
 import re
 import sqlite3
 from contextlib import asynccontextmanager, closing
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -70,12 +70,18 @@ def _row_to_recipe(row: sqlite3.Row) -> dict:
 
 
 def _scale_ingredient(ingredient: str, factor: float) -> str:
+    if factor == 1:
+        return ingredient
+
     match = re.match(r"^(\s*)(\d+(?:\.\d+)?)(?=\s|[A-Za-z]|$)", ingredient)
     if match is None:
         return ingredient
 
-    quantity = Decimal(match.group(2)) * Decimal(str(factor))
-    scaled_quantity = format(quantity, "f")
+    quantity = Decimal(match.group(2))
+    decimal_factor = Decimal(str(factor))
+    with localcontext() as context:
+        context.prec = len(quantity.as_tuple().digits) + len(decimal_factor.as_tuple().digits)
+        scaled_quantity = format(quantity * decimal_factor, "f")
     if "." in scaled_quantity:
         scaled_quantity = scaled_quantity.rstrip("0").rstrip(".")
     return f"{match.group(1)}{scaled_quantity}{ingredient[match.end(2):]}"
