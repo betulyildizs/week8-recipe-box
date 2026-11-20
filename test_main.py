@@ -71,6 +71,40 @@ def test_unknown_recipe_404():
     assert r.status_code == 404
 
 
+def test_scaled_recipe_scales_quantities_and_preserves_recipe():
+    original = client.post(
+        "/recipes",
+        json={
+            "title": "Bread",
+            "ingredients": ["200 g flour", "1.5 tsp yeast", "salt to taste"],
+            "tags": ["baking"],
+        },
+    ).json()
+
+    response = client.get(f"/recipes/{original['id']}/scaled?factor=2")
+
+    assert response.status_code == 200
+    scaled = response.json()
+    assert scaled == {
+        **original,
+        "ingredients": ["400 g flour", "3 tsp yeast", "salt to taste"],
+    }
+    assert client.get(f"/recipes/{original['id']}").json() == original
+
+
+def test_scaled_recipe_returns_404_for_unknown_recipe():
+    response = client.get("/recipes/99999/scaled?factor=2")
+
+    assert response.status_code == 404
+
+
+def test_scaled_recipe_requires_positive_factor():
+    recipe_id = client.post("/recipes", json={"title": "Soup"}).json()["id"]
+
+    assert client.get(f"/recipes/{recipe_id}/scaled").status_code == 422
+    assert client.get(f"/recipes/{recipe_id}/scaled?factor=0").status_code == 422
+
+
 def test_shopping_list_merges_ingredients_in_first_seen_order():
     first = client.post(
         "/recipes",

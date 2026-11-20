@@ -11,11 +11,13 @@ Test:
     pytest
 """
 import json
+import re
 import sqlite3
 from contextlib import closing
+from decimal import Decimal
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -62,6 +64,18 @@ def _row_to_recipe(row: sqlite3.Row) -> dict:
     }
 
 
+def _scale_ingredient(ingredient: str, factor: float) -> str:
+    match = re.match(r"^(\s*)(\d+(?:\.\d+)?)(?=\s|$)", ingredient)
+    if match is None:
+        return ingredient
+
+    quantity = Decimal(match.group(2)) * Decimal(str(factor))
+    scaled_quantity = format(quantity, "f")
+    if "." in scaled_quantity:
+        scaled_quantity = scaled_quantity.rstrip("0").rstrip(".")
+    return f"{match.group(1)}{scaled_quantity}{ingredient[match.end(2):]}"
+
+
 @app.get("/")
 def index():
     return FileResponse(BASE / "static" / "index.html")
@@ -96,6 +110,20 @@ def get_recipe(recipe_id: int):
     if row is None:
         raise HTTPException(status_code=404, detail="unknown recipe")
     return _row_to_recipe(row)
+
+
+@app.get("/recipes/{recipe_id}/scaled")
+def get_scaled_recipe(recipe_id: int, factor: float = Query(..., gt=0)):
+    with closing(get_db()) as conn:
+        row = conn.execute("SELECT * FROM recipes WHERE id = ?", (recipe_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="unknown recipe")
+
+    recipe = _row_to_recipe(row)
+    recipe["ingredients"] = [
+        _scale_ingredient(ingredient, factor) for ingredient in recipe["ingredients"]
+    ]
+    return recipe
 
 
 @app.get("/shopping-list")

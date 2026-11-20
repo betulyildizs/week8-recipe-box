@@ -13,6 +13,7 @@ uvicorn main:app --reload   # http://localhost:8000  (UI at /, docs at /docs)
 ## Endpoints
 - `POST /recipes` `{ "title": ..., "ingredients": [...], "tags": [...] }`
 - `GET /recipes`, `GET /recipes/{id}`
+- `GET /recipes/{id}/scaled?factor=2` returns a recipe copy with numeric ingredient quantities scaled
 - `GET /shopping-list?ids=1,2,3` merges recipe ingredients without duplicates
 
 ## Parallel work with git worktrees
