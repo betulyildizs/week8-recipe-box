@@ -11,8 +11,11 @@ Test:
     pytest
 """
 import json
+import math
+import re
 import sqlite3
-from contextlib import closing
+from contextlib import asynccontextmanager, closing
+from decimal import Decimal, localcontext
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -21,8 +24,6 @@ from pydantic import BaseModel
 
 BASE = Path(__file__).parent
 DB_PATH = BASE / "recipes.db"
-
-app = FastAPI(title="Recipe Box")
 
 
 def get_db() -> sqlite3.Connection:
@@ -44,7 +45,13 @@ def init_db() -> None:
         conn.commit()
 
 
-init_db()
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="Recipe Box", lifespan=lifespan)
 
 
 class RecipeIn(BaseModel):
@@ -60,6 +67,24 @@ def _row_to_recipe(row: sqlite3.Row) -> dict:
         "ingredients": json.loads(row["ingredients"]),
         "tags": json.loads(row["tags"]),
     }
+
+
+def _scale_ingredient(ingredient: str, factor: float) -> str:
+    if factor == 1:
+        return ingredient
+
+    match = re.match(r"^(\s*)(\d+(?:\.\d+)?)(?=\s|[A-Za-z]|$)", ingredient)
+    if match is None:
+        return ingredient
+
+    quantity = Decimal(match.group(2))
+    decimal_factor = Decimal(str(factor))
+    with localcontext() as context:
+        context.prec = len(quantity.as_tuple().digits) + len(decimal_factor.as_tuple().digits)
+        scaled_quantity = format(quantity * decimal_factor, "f")
+    if "." in scaled_quantity:
+        scaled_quantity = scaled_quantity.rstrip("0").rstrip(".")
+    return f"{match.group(1)}{scaled_quantity}{ingredient[match.end(2):]}"
 
 
 @app.get("/")
@@ -96,6 +121,23 @@ def get_recipe(recipe_id: int):
     if row is None:
         raise HTTPException(status_code=404, detail="unknown recipe")
     return _row_to_recipe(row)
+
+
+@app.get("/recipes/{recipe_id}/scaled")
+def get_scaled_recipe(recipe_id: int, factor: float):
+    if not math.isfinite(factor) or factor <= 0:
+        raise HTTPException(status_code=422, detail="factor must be a finite positive number")
+
+    with closing(get_db()) as conn:
+        row = conn.execute("SELECT * FROM recipes WHERE id = ?", (recipe_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="unknown recipe")
+
+    recipe = _row_to_recipe(row)
+    recipe["ingredients"] = [
+        _scale_ingredient(ingredient, factor) for ingredient in recipe["ingredients"]
+    ]
+    return recipe
 
 
 @app.get("/shopping-list")
