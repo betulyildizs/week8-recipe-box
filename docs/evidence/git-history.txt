@@ -1,0 +1,40 @@
+﻿*   da5c59e (HEAD -> main) merge: integrate approved generator-critic scaling
+|\  
+| * 5c0c9ab (feat/ingredient-scaling) fix: generator revision 3 preserve decimal precision
+| * 80be856 fix: generator revision 2 isolate tests and update documentation
+| * 106684e fix: generator revision 1 address scaling correctness and edge cases
+| * 99e4bf5 feat: generator initial ingredient scaling implementation
+|/  
+*   8fd5e2e merge: integrate tag filter agent
+|\  
+| * a9e6fac (week8-task-b) feat: implement recipe tag filter with concurrent agent B
+* |   5f474ae merge: integrate shopping list agent
+|\ \  
+| |/  
+|/|   
+| * dd91abb (week8-task-a) feat: implement shopping list with concurrent agent A
+|/  
+* 2b795ec (task-b, task-a) chore: initialize Week 8 Recipe Box starter
+* d7c267c Agent host session b48aac0a-06c4-428e-9f67-7402da255fb1 - turn 3
+* 7cb8a75 Agent host session b48aac0a-06c4-428e-9f67-7402da255fb1 - turn 3 start
+* 21c0461 Agent host session b48aac0a-06c4-428e-9f67-7402da255fb1 - turn 2
+* f1480a8 Agent host session b48aac0a-06c4-428e-9f67-7402da255fb1 - turn 2 start
+* 89243b6 Agent host session b48aac0a-06c4-428e-9f67-7402da255fb1 - turn 1
+* 3341ceb Agent host session b48aac0a-06c4-428e-9f67-7402da255fb1 - turn 1 start
+* 5e53b6e Agent host session b48aac0a-06c4-428e-9f67-7402da255fb1 - baseline checkpoint
+* 6a50123 Agent host session b66ab53c-0034-4f01-bc4b-4c7f10d38c91 - turn 3
+* 06905d2 Agent host session b66ab53c-0034-4f01-bc4b-4c7f10d38c91 - turn 3 start
+* 7faf735 Agent host session b66ab53c-0034-4f01-bc4b-4c7f10d38c91 - turn 2
+* 5a4adbb Agent host session b66ab53c-0034-4f01-bc4b-4c7f10d38c91 - turn 2 start
+* be43e59 Agent host session b66ab53c-0034-4f01-bc4b-4c7f10d38c91 - turn 1
+* 72f1824 Agent host session b66ab53c-0034-4f01-bc4b-4c7f10d38c91 - turn 1 start
+* b9a0d1b Agent host session b66ab53c-0034-4f01-bc4b-4c7f10d38c91 - baseline checkpoint
+* a37661f Agent host session c6b55399-2c28-4b57-ad0a-cf6139239f41 - baseline checkpoint
+* 1185c36 Agent host session 7a8c63ff-d655-4f25-b4f6-ac1c51b069fc - turn 2
+* 6db3f05 Agent host session 7a8c63ff-d655-4f25-b4f6-ac1c51b069fc - turn 2 start
+* ea8aa39 Agent host session 7a8c63ff-d655-4f25-b4f6-ac1c51b069fc - turn 1
+* f1de745 Agent host session 7a8c63ff-d655-4f25-b4f6-ac1c51b069fc - turn 1 start
+* be5c7de Agent host session 7a8c63ff-d655-4f25-b4f6-ac1c51b069fc - baseline checkpoint
+* 21d5eef Agent host session 7b0cd037-483a-46c8-9d4c-58091acd673c - turn 1
+* 0f6798b Agent host session 7b0cd037-483a-46c8-9d4c-58091acd673c - turn 1 start
+* 81247e7 Agent host session 7b0cd037-483a-46c8-9d4c-58091acd673c - baseline checkpoint
