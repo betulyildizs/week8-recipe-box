@@ -6,14 +6,14 @@ agents and a generator–critic loop.
 ## Setup
 ```bash
 pip install -r requirements.txt
-pytest                      # 3 tests should pass
+pytest
 uvicorn main:app --reload   # http://localhost:8000  (UI at /, docs at /docs)
 ```
 
 ## Endpoints
 - `POST /recipes` `{ "title": ..., "ingredients": [...], "tags": [...] }`
 - `GET /recipes`, `GET /recipes/{id}`
-- `GET /recipes/{id}/scaled?factor=2` returns a recipe copy with numeric ingredient quantities scaled
+- `GET /recipes/{id}/scaled?factor=2` returns a recipe copy with leading numeric ingredient quantities scaled (for example, `200 g flour` to `400 g flour` and `200g flour` to `400g flour`). Decimal factors are supported, and ingredients without a leading quantity are unchanged. The factor must be finite and positive; a missing, malformed, zero, negative, or non-finite factor returns `422`, and an unknown recipe returns `404`.
 - `GET /shopping-list?ids=1,2,3` merges recipe ingredients without duplicates
 
 ## Parallel work with git worktrees

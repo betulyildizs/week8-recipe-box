@@ -14,7 +14,7 @@ import json
 import math
 import re
 import sqlite3
-from contextlib import closing
+from contextlib import asynccontextmanager, closing
 from decimal import Decimal
 from pathlib import Path
 
@@ -24,8 +24,6 @@ from pydantic import BaseModel
 
 BASE = Path(__file__).parent
 DB_PATH = BASE / "recipes.db"
-
-app = FastAPI(title="Recipe Box")
 
 
 def get_db() -> sqlite3.Connection:
@@ -47,7 +45,13 @@ def init_db() -> None:
         conn.commit()
 
 
-init_db()
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="Recipe Box", lifespan=lifespan)
 
 
 class RecipeIn(BaseModel):

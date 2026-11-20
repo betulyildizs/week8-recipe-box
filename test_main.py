@@ -1,11 +1,17 @@
+import pytest
 from fastapi.testclient import TestClient
 
-from main import app
-
-client = TestClient(app)
+import main
 
 
-def test_create_and_get_recipe():
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    monkeypatch.setattr(main, "DB_PATH", tmp_path / "recipes.db")
+    with TestClient(main.app) as test_client:
+        yield test_client
+
+
+def test_create_and_get_recipe(client):
     r = client.post(
         "/recipes",
         json={"title": "Pancakes", "ingredients": ["flour", "milk"], "tags": ["breakfast"]},
@@ -18,14 +24,14 @@ def test_create_and_get_recipe():
     assert r2.json()["tags"] == ["breakfast"]
 
 
-def test_list_recipes():
+def test_list_recipes(client):
     client.post("/recipes", json={"title": "Toast"})
     r = client.get("/recipes")
     assert r.status_code == 200
     assert any(rec["title"] == "Toast" for rec in r.json())
 
 
-def test_list_recipes_filters_by_matching_tag():
+def test_list_recipes_filters_by_matching_tag(client):
     matching = client.post(
         "/recipes",
         json={"title": "Breakfast Oats", "ingredients": ["oats"], "tags": ["breakfast", "healthy"]},
@@ -42,21 +48,21 @@ def test_list_recipes_filters_by_matching_tag():
     assert all("breakfast" in recipe["tags"] for recipe in r.json())
 
 
-def test_list_recipes_tag_with_no_matches():
+def test_list_recipes_tag_with_no_matches(client):
     r = client.get("/recipes", params={"tag": "missing-tag"})
 
     assert r.status_code == 200
     assert r.json() == []
 
 
-def test_list_recipes_omitted_tag_preserves_list_behavior():
+def test_list_recipes_omitted_tag_preserves_list_behavior(client):
     r = client.get("/recipes")
 
     assert r.status_code == 200
     assert isinstance(r.json(), list)
 
 
-def test_list_recipes_excludes_recipes_without_tags():
+def test_list_recipes_excludes_recipes_without_tags(client):
     client.post("/recipes", json={"title": "Untagged Recipe"})
 
     r = client.get("/recipes", params={"tag": "breakfast"})
@@ -66,12 +72,12 @@ def test_list_recipes_excludes_recipes_without_tags():
     assert all(recipe["title"] != "Untagged Recipe" for recipe in r.json())
 
 
-def test_unknown_recipe_404():
+def test_unknown_recipe_404(client):
     r = client.get("/recipes/99999")
     assert r.status_code == 404
 
 
-def test_scaled_recipe_scales_quantities_and_preserves_recipe():
+def test_scaled_recipe_scales_quantities_and_preserves_recipe(client):
     original = client.post(
         "/recipes",
         json={
@@ -108,7 +114,7 @@ def test_scaled_recipe_scales_quantities_and_preserves_recipe():
     assert client.get(f"/recipes/{original['id']}").json() == original
 
 
-def test_scaled_recipe_supports_decimal_factors():
+def test_scaled_recipe_supports_decimal_factors(client):
     recipe_id = client.post(
         "/recipes",
         json={"title": "Oats", "ingredients": ["2 cups oats", "1.5g spice"]},
@@ -120,13 +126,13 @@ def test_scaled_recipe_supports_decimal_factors():
     assert response.json()["ingredients"] == ["0.5 cups oats", "0.375g spice"]
 
 
-def test_scaled_recipe_returns_404_for_unknown_recipe():
+def test_scaled_recipe_returns_404_for_unknown_recipe(client):
     response = client.get("/recipes/99999/scaled?factor=2")
 
     assert response.status_code == 404
 
 
-def test_scaled_recipe_rejects_invalid_factors():
+def test_scaled_recipe_rejects_invalid_factors(client):
     recipe_id = client.post("/recipes", json={"title": "Soup"}).json()["id"]
 
     for factor in ("", "0", "-1", "inf", "Infinity", "1e309", "nan", "not-a-number"):
@@ -134,7 +140,15 @@ def test_scaled_recipe_rejects_invalid_factors():
         assert response.status_code == 422
 
 
-def test_shopping_list_merges_ingredients_in_first_seen_order():
+def test_scaled_recipe_requires_factor_parameter(client):
+    recipe_id = client.post("/recipes", json={"title": "Soup"}).json()["id"]
+
+    response = client.get(f"/recipes/{recipe_id}/scaled")
+
+    assert response.status_code == 422
+
+
+def test_shopping_list_merges_ingredients_in_first_seen_order(client):
     first = client.post(
         "/recipes",
         json={"title": "First", "ingredients": ["flour", "milk", "flour"]},
@@ -150,7 +164,7 @@ def test_shopping_list_merges_ingredients_in_first_seen_order():
     assert response.json() == ["flour", "milk", "eggs"]
 
 
-def test_shopping_list_ignores_duplicate_recipe_ids():
+def test_shopping_list_ignores_duplicate_recipe_ids(client):
     recipe_id = client.post(
         "/recipes",
         json={"title": "Repeated", "ingredients": ["butter", "sugar"]},
@@ -162,17 +176,17 @@ def test_shopping_list_ignores_duplicate_recipe_ids():
     assert response.json() == ["butter", "sugar"]
 
 
-def test_shopping_list_empty_input_returns_empty_list():
+def test_shopping_list_empty_input_returns_empty_list(client):
     assert client.get("/shopping-list").json() == []
     assert client.get("/shopping-list?ids=").json() == []
 
 
-def test_shopping_list_rejects_invalid_ids():
+def test_shopping_list_rejects_invalid_ids(client):
     for ids in ("abc", "1,,2", "0", "-1"):
         response = client.get(f"/shopping-list?ids={ids}")
         assert response.status_code == 400
 
 
-def test_shopping_list_returns_404_for_unknown_recipe():
+def test_shopping_list_returns_404_for_unknown_recipe(client):
     response = client.get("/shopping-list?ids=2147483647")
     assert response.status_code == 404
